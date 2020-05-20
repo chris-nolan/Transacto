@@ -9,12 +9,11 @@ using Microsoft.Extensions.Primitives;
 #nullable enable
 namespace Transacto {
 	public class Response {
-		public IList<(string, StringValues)> Headers { get; }
-		public HttpStatusCode StatusCode { get; set; }
+		public virtual IDictionary<string, StringValues> Headers { get; }
+		public virtual HttpStatusCode StatusCode { get; set; }
 
 		public Response() {
-			Headers = new List<(string, StringValues)>();
-			StatusCode = HttpStatusCode.OK;
+			Headers = new HeaderDictionary();
 		}
 
 		public ValueTask Write(HttpResponse response) {
@@ -27,7 +26,7 @@ namespace Transacto {
 			return WriteBody(response.Body, response.HttpContext.RequestAborted);
 		}
 
-		protected virtual ValueTask WriteBody(Stream stream, CancellationToken cancellationToken = default) =>
+		protected internal virtual ValueTask WriteBody(Stream stream, CancellationToken cancellationToken) =>
 			new ValueTask(Task.CompletedTask);
 	}
 }

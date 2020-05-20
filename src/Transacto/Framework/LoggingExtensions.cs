@@ -19,6 +19,8 @@ namespace Transacto.Framework {
 					if (log.IsEnabled(LogLevel.Error)) {
 						log.LogError(ex.ToString());
 					}
+
+					throw;
 				}
 			});
 		}

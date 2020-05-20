@@ -12,8 +12,7 @@ namespace Transacto.Infrastructure {
 		public GeneralLedgerEntryEventStoreRepository(EventStoreClient eventStore,
 			IMessageTypeMapper messageTypeMapper, UnitOfWork unitOfWork) {
 			_inner = new EventStoreRepository<GeneralLedgerEntry>(eventStore, unitOfWork,
-				GeneralLedgerEntry.Factory,
-				identifier => $"generalLedgerEntry-{identifier.ToString()}", messageTypeMapper);
+				GeneralLedgerEntry.Factory, messageTypeMapper);
 		}
 
 		public async ValueTask<GeneralLedgerEntry> Get(GeneralLedgerEntryIdentifier identifier,

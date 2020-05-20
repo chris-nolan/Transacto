@@ -16,34 +16,13 @@ using Transacto.Messages;
 using Xunit;
 
 namespace Transacto.Integration {
-	public class ChartOfAccountsIntegrationTests : IDisposable {
-		private readonly TestServer _testServer;
-		private readonly HttpClient _httpClient;
-
-		public ChartOfAccountsIntegrationTests() {
-			_testServer = new TestServer(new WebHostBuilder()
-				.Configure(app => app.UseTransacto())
-				.ConfigureServices(s => s
-					.AddEventStoreClient(settings => {
-						settings.OperationOptions.ThrowOnAppendFailure = true;
-						settings.CreateHttpMessageHandler = () => new SocketsHttpHandler {
-							SslOptions = {
-								RemoteCertificateValidationCallback = delegate {
-									return true;
-								}
-							}
-						};
-					})
-					.AddTransacto()));
-			_httpClient = _testServer.CreateClient();
-		}
-
+	public class ChartOfAccountsIntegrationTests : IntegrationTests {
 		[Fact]
 		public async Task Somewthing() {
 			var accounts = GetChartOfAccounts();
 
 			foreach (var (accountNumber, accountName) in accounts.OrderBy(_ => Guid.NewGuid())) {
-				await _httpClient.SendCommand("/chart-of-accounts", new DefineAccount {
+				await HttpClient.SendCommand("/chart-of-accounts", new DefineAccount {
 					AccountName = accountName.ToString(),
 					AccountNumber = accountNumber.ToInt32()
 				}, TransactoSerializerOptions.BusinessTransactions());
@@ -51,7 +30,7 @@ namespace Transacto.Integration {
 
 			await Task.Delay(500);
 
-			using var response = await _httpClient.GetAsync("/chart-of-accounts");
+			using var response = await HttpClient.GetAsync("/chart-of-accounts");
 
 			var chartOfAccounts = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
 
@@ -78,11 +57,6 @@ namespace Transacto.Integration {
 			yield return (new AccountNumber(3900), new AccountName("Retained Earnings"));
 			yield return (new AccountNumber(4000), new AccountName("Sales Income"));
 			yield return (new AccountNumber(5000), new AccountName("Cost of Goods Sold"));
-		}
-
-		public void Dispose() {
-			_httpClient?.Dispose();
-			_testServer?.Dispose();
 		}
 	}
 }

@@ -2,7 +2,6 @@ using System;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -28,7 +27,7 @@ namespace Transacto {
 				throw new Exception();
 			}
 
-			return builder.MapGet<object>(route, values => null!, (_, ct) => getResponse(ct));
+			return builder.MapGetInternal<object>(route, values => null!, (_, ct) => getResponse(ct));
 		}
 
 		public static IEndpointRouteBuilder MapGet(this IEndpointRouteBuilder builder, string route,
@@ -76,30 +75,21 @@ namespace Transacto {
 			return builder;
 		}
 
-		public static IEndpointRouteBuilder MapGet<T>(this IEndpointRouteBuilder builder, string route,
-			Func<T, CancellationToken, ValueTask<Response>> getResponse) {
-			var routeTemplate = TemplateParser.Parse(route);
-			var argumentCount = routeTemplate.Parameters.Count(p => p.IsParameter);
-
-			if (argumentCount == 0) {
-				throw new Exception();
-			}
-
-			if (argumentCount == 1) {
-				return builder.MapGet(route, values => (T)values[0], getResponse);
-			}
-
-			var createDtoMethod = typeof(T).GetMethods(BindingFlags.Static | BindingFlags.Public)
-				.Single(mi => mi.Name == "Create" &&
-				              mi.IsGenericMethod &&
-				              mi.GetGenericArguments().Length == argumentCount);
-
-			return builder.MapGet(route, values => (T)createDtoMethod.Invoke(null, values)!, getResponse);
-		}
-
 		public static IEndpointRouteBuilder MapCommands(this IEndpointRouteBuilder builder, string route,
+			params Type[] commandTypes) =>
+			builder.MapCommandsInternal(route, TransactoSerializerOptions.Commands, commandTypes);
+
+		public static IEndpointRouteBuilder MapBusinessTransaction<T>(this IEndpointRouteBuilder builder, string route)
+			where T : IBusinessTransaction =>
+			builder.MapCommandsInternal(route, TransactoSerializerOptions.BusinessTransactions(typeof(T)),
+				typeof(PostGeneralLedgerEntry));
+
+		private static IEndpointRouteBuilder MapCommandsInternal(this IEndpointRouteBuilder builder, string route,
+			JsonSerializerOptions serializerOptions,
 			params Type[] commandTypes) {
 			var dispatcher = new CommandDispatcher(builder.ServiceProvider.GetServices<CommandHandlerModule>());
+			var commandContext = builder.ServiceProvider.GetRequiredService<ICommandContext>();
+
 			var map = commandTypes.ToDictionary(commandType => commandType.Name);
 
 			builder.MapPost(route, async context => {
@@ -108,54 +98,43 @@ namespace Transacto {
 					return new Response {StatusCode = HttpStatusCode.UnsupportedMediaType};
 				}
 
-				if (context.Request.Form.Files.Count != 1 ||
-				    !context.Request.Form.TryGetValue("command", out var commandName) ||
-				    !map.TryGetValue(commandName, out var commandType)) {
-					return new Response {StatusCode = HttpStatusCode.BadRequest};
+				if (!context.Request.Form.TryGetValue("command", out var commandName)) {
+					return new TextResponse($"No command type was specified.") {
+						StatusCode = HttpStatusCode.BadRequest
+					};
+				}
+				if (!map.TryGetValue(commandName, out var commandType)) {
+					return new TextResponse($"The command type '{commandName}' was not recognized.") {
+						StatusCode = HttpStatusCode.BadRequest
+					};
+				}
+
+				if (context.Request.Form.Files.Count != 1) {
+					return new TextResponse("No command was found on the request.")
+						{StatusCode = HttpStatusCode.BadRequest};
 				}
 
 				await using var commandStream = context.Request.Form.Files[0].OpenReadStream();
 				var command = await JsonSerializer.DeserializeAsync(commandStream, commandType,
-					TransactoSerializerOptions.Commands);
-
-				await dispatcher.Handle(command, context.RequestAborted);
-
-				return new Response();
-			});
-
-			return builder;
-		}
-
-		public static IEndpointRouteBuilder MapBusinessTransaction<T>(this IEndpointRouteBuilder builder, string route)
-			where T : IBusinessTransaction {
-			var dispatcher = new CommandDispatcher(builder.ServiceProvider.GetServices<CommandHandlerModule>());
-			var serializerOptions = TransactoSerializerOptions.BusinessTransactions(typeof(T));
-
-			builder.MapPost(route, async context => {
-				if (!MediaTypeHeaderValue.TryParse(context.Request.ContentType, out var mediaType) ||
-				    !mediaType.MediaType.Equals("multipart/form-data", StringComparison.OrdinalIgnoreCase)) {
-					return new Response {StatusCode = HttpStatusCode.UnsupportedMediaType};
-				}
-
-				if (context.Request.Form.Files.Count != 1 ||
-				    !context.Request.Form.TryGetValue("command", out var commandName) ||
-				    commandName != nameof(PostGeneralLedgerEntry)) {
-					return new Response {StatusCode = HttpStatusCode.BadRequest};
-				}
-
-				await using var commandStream = context.Request.Form.Files[0].OpenReadStream();
-				var command = await JsonSerializer.DeserializeAsync(commandStream, typeof(PostGeneralLedgerEntry),
 					serializerOptions);
 
 				await dispatcher.Handle(command, context.RequestAborted);
 
-				return new Response();
+				return new Response {
+					Headers = {
+						["etag"] =
+							commandContext.Position.HasValue
+								? $@"""{commandContext.Position.Value.ToString()}"""
+								: string.Empty
+					},
+					StatusCode = HttpStatusCode.OK
+				};
 			});
 
 			return builder;
 		}
 
-		private static IEndpointRouteBuilder MapGet<T>(this IEndpointRouteBuilder builder, string route,
+		private static IEndpointRouteBuilder MapGetInternal<T>(this IEndpointRouteBuilder builder, string route,
 			Func<object[], T> getDto, Func<T, CancellationToken, ValueTask<Response>> getResponse) {
 			builder.MapMethods(route, new[] {HttpMethod.Get.Method}, async context => {
 				var dto = getDto(context.GetRouteData().Values.Values.ToArray());

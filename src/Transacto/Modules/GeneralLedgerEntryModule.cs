@@ -8,10 +8,10 @@ using JsonSerializerOptions = System.Text.Json.JsonSerializerOptions;
 namespace Transacto.Modules {
 	public class GeneralLedgerEntryModule : CommandHandlerModule {
 		public GeneralLedgerEntryModule(EventStoreClient eventStore, IMessageTypeMapper messageTypeMapper,
-			JsonSerializerOptions eventSerializerOptions) {
+			JsonSerializerOptions eventSerializerOptions, ICommandContext commandContext) {
 			Build<PostGeneralLedgerEntry>()
 				.Log()
-				.UnitOfWork(eventStore, messageTypeMapper, eventSerializerOptions)
+				.UnitOfWork(eventStore, messageTypeMapper, eventSerializerOptions, commandContext)
 				.Handle((_, ct) => {
 					var (unitOfWork, command) = _;
 					var handlers = new GeneralLedgerEntryHandlers(

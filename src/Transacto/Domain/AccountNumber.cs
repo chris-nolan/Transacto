@@ -6,7 +6,7 @@ namespace Transacto.Domain {
 
 		public AccountNumber(int value) {
 			if (value < 1000 || value >= 9000) {
-				throw new InvalidOperationException();
+				throw new ArgumentOutOfRangeException(nameof(value));
 			}
 			Value = value;
 		}

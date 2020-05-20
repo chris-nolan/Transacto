@@ -1,6 +1,4 @@
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,8 +19,7 @@ namespace Transacto.Infrastructure {
 			_eventStore = eventStore;
 			_messageTypeMapper = messageTypeMapper;
 			_unitOfWork = unitOfWork;
-			_inner = new EventStoreRepository<GeneralLedger>(eventStore, unitOfWork, GeneralLedger.Factory,
-				identifier => identifier, messageTypeMapper);
+			_inner = new EventStoreRepository<GeneralLedger>(eventStore, unitOfWork, GeneralLedger.Factory, messageTypeMapper);
 		}
 
 		public async ValueTask<GeneralLedger> Get(CancellationToken cancellationToken = default) {
@@ -44,6 +41,7 @@ namespace Transacto.Infrastructure {
 					streamPosition = resolvedEvent.OriginalEvent.EventNumber;
 					lastEventRead = true;
 				}
+
 				var @event = JsonSerializer.Deserialize(resolvedEvent.OriginalEvent.Data.Span,
 					_messageTypeMapper.Map(resolvedEvent.OriginalEvent.EventType),
 					TransactoSerializerOptions.Events);

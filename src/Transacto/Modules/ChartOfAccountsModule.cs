@@ -1,4 +1,3 @@
-using System.Text.Json;
 using EventStore.Client;
 using Transacto.Application;
 using Transacto.Framework;

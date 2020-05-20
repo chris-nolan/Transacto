@@ -12,11 +12,11 @@ namespace Transacto.Infrastructure {
 		public ChartOfAccountsEventStoreRepository(EventStoreClient eventStore,
 			IMessageTypeMapper messageTypeMapper, UnitOfWork unitOfWork) {
 			_inner = new EventStoreRepository<ChartOfAccounts>(eventStore, unitOfWork,
-				ChartOfAccounts.Factory, _ => "chartOfAccounts", messageTypeMapper);
+				ChartOfAccounts.Factory, messageTypeMapper);
 		}
 
 		public ValueTask<Optional<ChartOfAccounts>> GetOptional(CancellationToken cancellationToken = default)
-			=> _inner.GetById(string.Empty, cancellationToken);
+			=> _inner.GetById(ChartOfAccounts.Identifier, cancellationToken);
 
 		public async ValueTask<ChartOfAccounts> Get(CancellationToken cancellationToken = default) {
 			var optionalChartOfAccounts = await GetOptional(cancellationToken);

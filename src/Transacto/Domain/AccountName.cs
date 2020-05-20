@@ -6,8 +6,12 @@ namespace Transacto.Domain {
         private readonly string _value;
 
         public AccountName(string value) {
-            if (value.Length == 0 || value.Length > MaxLength) {
-                throw new ArgumentException();
+            if (value.Length == 0) {
+                throw new ArgumentException("Input was empty.", nameof(value));
+            }
+
+            if (value.Length > MaxLength) {
+	            throw new ArgumentException("Input was too long.", nameof(value));
             }
 
             _value = value;

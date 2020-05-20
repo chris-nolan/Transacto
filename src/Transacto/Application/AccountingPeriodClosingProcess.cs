@@ -17,19 +17,5 @@ namespace Transacto.Application {
 			_chartOfAccounts = chartOfAccounts;
 		}
 
-		public async ValueTask Handle(AccountingPeriodClosing @event, CancellationToken cancellationToken) {
-			var retainedEarningsAccountNumber = new AccountNumber(@event.RetainedEarningsAccountNumber);
-			AccountType.OfAccountNumber(retainedEarningsAccountNumber).MustBe(AccountType.Equity);
-			var generalLedger = await _generalLedger.Get(cancellationToken);
-			foreach (var id in @event.GeneralLedgerEntryIds) {
-				var generalLedgerEntry =
-					await _generalLedgerEntries.Get(new GeneralLedgerEntryIdentifier(id), cancellationToken);
-				generalLedger.TransferEntry(generalLedgerEntry);
-			}
-
-			var chartOfAccounts = await _chartOfAccounts.Get(cancellationToken);
-
-			generalLedger.CompleteClosingPeriod(chartOfAccounts, retainedEarningsAccountNumber);
-		}
 	}
 }

@@ -21,7 +21,7 @@ namespace Transacto.Domain {
 		public bool IsInBalance => Balance == Money.Zero;
 		public IEnumerable<Debit> Debits => _debits.AsReadOnly();
 		public IEnumerable<Credit> Credits => _credits.AsReadOnly();
-		public override string Id => _identifier.ToString();
+		public override string Id => $"generalLedgerEntry-{_identifier}";
 		public GeneralLedgerEntryIdentifier Identifier => _identifier;
 
 		internal GeneralLedgerEntry(GeneralLedgerEntryIdentifier identifier,
@@ -101,14 +101,14 @@ namespace Transacto.Domain {
 		}
 
 		public void MustBePosted() {
-			if (_posted) {
+			if (!_posted) {
 				throw new InvalidOperationException();
 			}
 		}
 
 		public void MustBeInBalance() {
 			if (Balance != Money.Zero) {
-				throw new InvalidOperationException();
+				throw new GeneralLedgerEntryNotInBalanceException(_identifier);
 			}
 		}
 	}

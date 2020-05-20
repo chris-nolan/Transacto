@@ -11,7 +11,8 @@ namespace SomeCompany.ReceiptOfGoods {
 			return (inventoryInTransit + item.Total, inventoryOnHand + item.Total);
 		}
 
-		public GeneralLedgerEntryNumber ReferenceNumber => new GeneralLedgerEntryNumber("goodsReceipt-" + ReceiptOfGoodsNumber);
+		public GeneralLedgerEntryNumber ReferenceNumber =>
+			new GeneralLedgerEntryNumber("goodsReceipt", ReceiptOfGoodsNumber);
 
 		public void Apply(GeneralLedgerEntry entry, ChartOfAccounts chartOfAccounts) {
 			var (inventoryInTransit, inventoryOnHand) = ReceiptOfGoodsItems.Aggregate(

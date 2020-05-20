@@ -1,12 +1,8 @@
 using System;
 using System.Collections.Generic;
-using EventStore.Client;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Npgsql;
 using Transacto;
-using Transacto.Framework;
 
 namespace SomeCompany.Inventory {
 	public class Inventory : IPlugin {
